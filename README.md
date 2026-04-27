@@ -176,19 +176,9 @@ Contributions welcome! Please open an issue or PR for:
 
 MIT
 
-## Citation
-
-If you use this tool in research, please cite:
-
-```
-[Your preprint/paper information]
-```
-
 ## Acknowledgments
 
 * RDKit – Cheminformatics toolkit
 * SHAP – Model interpretability
 * SIDER – Side effect resource
 * ChEMBL – Bioactive molecule database
-
-## Contact
