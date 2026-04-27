@@ -1,0 +1,37 @@
+body {
+    font-family: Arial;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: white;
+    text-align: center;
+    padding: 40px;
+}
+
+input {
+    width: 60%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+}
+
+button {
+    padding: 12px 20px;
+    margin-left: 10px;
+    border-radius: 10px;
+    border: none;
+    background: #00c6ff;
+    color: black;
+    cursor: pointer;
+}
+
+.card {
+    background: rgba(255,255,255,0.1);
+    margin: 10px auto;
+    padding: 10px;
+    border-radius: 10px;
+    width: 50%;
+}
+
+img {
+    margin-top: 20px;
+    border-radius: 10px;
+}

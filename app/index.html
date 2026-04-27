@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QSAR Side Effect Predictor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:        #07090f;
+            --surface:   #0d1119;
+            --surface2:  #121822;
+            --border:    rgba(255,255,255,0.07);
+            --accent:    #00e5b0;
+            --accent2:   #00a87d;
+            --danger:    #ff4d6d;
+            --text:      #dce6f0;
+            --muted:     #5a6a80;
+            --score-bg:  rgba(0,229,176,0.08);
+        }
+
+        html, body {
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 300;
+        }
+
+        /* Grid texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,229,176,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,229,176,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .layout {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            min-height: 100vh;
+        }
+
+        /* ── Left panel ───────────────────────────────────── */
+        .left-panel {
+            border-right: 1px solid var(--border);
+            padding: 40px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            background: var(--surface);
+        }
+
+        .logo {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .logo-tag {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .logo h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1.2;
+        }
+
+        .logo p {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 6px;
+            line-height: 1.6;
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+        }
+
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .input-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.15em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        .smiles-input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px 14px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--accent);
+            outline: none;
+            transition: border-color 0.2s;
+            resize: vertical;
+            min-height: 72px;
+        }
+
+        .smiles-input::placeholder { color: var(--muted); }
+        .smiles-input:focus { border-color: var(--accent2); }
+
+        .predict-btn {
+            position: relative;
+            width: 100%;
+            padding: 14px;
+            background: transparent;
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            color: var(--accent);
+            font-family: 'Syne', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            overflow: hidden;
+        }
+
+        .predict-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--accent);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.25s ease;
+            z-index: 0;
+        }
+
+        .predict-btn:hover::before { transform: scaleX(1); }
+        .predict-btn:hover { color: var(--bg); }
+        .predict-btn span { position: relative; z-index: 1; }
+
+        .predict-btn.loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* Example pills */
+        .examples {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .example-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .example-pill:hover { border-color: var(--accent2); }
+
+        .pill-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .pill-name {
+            font-size: 12px;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .pill-smiles {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            color: var(--muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .meta {
+            margin-top: auto;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        /* ── Right panel ──────────────────────────────────── */
+        .right-panel {
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        .result-count {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--accent);
+        }
+
+        /* Results list */
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .result-row {
+            position: relative;
+            display: grid;
+            grid-template-columns: 1fr 80px;
+            align-items: center;
+            padding: 11px 16px;
+            border-radius: 5px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            overflow: hidden;
+        }
+
+        /* score bar bg */
+        .result-row::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: var(--score-w, 0%);
+            background: var(--score-bg);
+            transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+            z-index: 0;
+        }
+
+        .result-row:hover {
+            border-color: var(--border);
+            background: var(--surface2);
+        }
+
+        .result-row.active {
+            border-color: var(--accent2);
+            background: rgba(0,229,176,0.04);
+        }
+
+        .effect-name {
+            position: relative;
+            z-index: 1;
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text);
+        }
+
+        .effect-score {
+            position: relative;
+            z-index: 1;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--accent);
+            text-align: right;
+        }
+
+        /* SHAP panel */
+        .shap-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .shap-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .shap-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.15em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        .shap-effect-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--accent);
+        }
+
+        .shap-body {
+            padding: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+
+        .shap-body img {
+            max-width: 100%;
+            max-height: 380px;
+            border-radius: 4px;
+        }
+
+        .shap-placeholder {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+            text-align: center;
+            line-height: 2;
+        }
+
+        .shap-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            color: var(--muted);
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            min-height: 300px;
+            color: var(--muted);
+        }
+
+        .empty-icon {
+            font-size: 36px;
+            opacity: 0.3;
+        }
+
+        .empty-text {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            text-align: center;
+            line-height: 2;
+        }
+
+        .error-msg {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--danger);
+            padding: 12px 16px;
+            border: 1px solid rgba(255,77,109,0.3);
+            border-radius: 5px;
+            background: rgba(255,77,109,0.05);
+        }
+
+        /* Stagger animation on results */
+        .result-row {
+            animation: fadeSlide 0.3s ease both;
+        }
+
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateX(-8px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="layout">
+
+    <!-- LEFT PANEL -->
+    <aside class="left-panel">
+        <div class="logo">
+            <span class="logo-tag">QSAR // ML Model v2.0</span>
+            <h1>Side Effect<br>Predictor</h1>
+            <p>Multi-label adverse effect prediction from molecular structure using Morgan fingerprints &amp; physicochemical descriptors.</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="input-section">
+            <label class="input-label">SMILES Input</label>
+            <textarea class="smiles-input" id="smiles" placeholder="Enter canonical SMILES..."></textarea>
+            <button class="predict-btn" onclick="predict()" id="predictBtn">
+                <span>Run Prediction</span>
+            </button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="examples">
+            <div class="input-label" style="margin-bottom:4px">Quick Examples</div>
+            <div class="example-pill" onclick="loadExample('CC(=O)OC1=CC=CC=C1C(=O)O', this)">
+                <div class="pill-dot"></div>
+                <div>
+                    <div class="pill-name">Aspirin</div>
+                    <div class="pill-smiles">CC(=O)OC1=CC=CC=C1C(=O)O</div>
+                </div>
+            </div>
+            <div class="example-pill" onclick="loadExample('CN/C(=C\\[N+](=O)[O-])/NCCSCC1=CC=C(O1)CN(C)C', this)">
+                <div class="pill-dot"></div>
+                <div>
+                    <div class="pill-name">Cimetidine</div>
+                    <div class="pill-smiles">CN/C(=C\[N+](=O)...)...</div>
+                </div>
+            </div>
+            <div class="example-pill" onclick="loadExample('C(CN)CNCCSP(=O)(O)O', this)">
+                <div class="pill-dot"></div>
+                <div>
+                    <div class="pill-name">Amifostine</div>
+                    <div class="pill-smiles">C(CN)CNCCSP(=O)(O)O</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="meta">
+            Training data: SIDER + ChEMBL<br>
+            Features: 4×1024 Morgan FP + 14 descriptors<br>
+            Labels: Top-K filtered (≥50 occurrences)<br>
+            Loss: Weighted binary cross-entropy
+        </div>
+    </aside>
+
+    <!-- RIGHT PANEL -->
+    <main class="right-panel">
+
+        <div class="panel-header">
+            <span class="panel-title">Predicted Adverse Effects</span>
+            <span class="result-count" id="resultCount"></span>
+        </div>
+
+        <div id="resultsContainer">
+            <div class="empty-state">
+                <div class="empty-icon">⬡</div>
+                <div class="empty-text">
+                    Enter a SMILES string and run prediction<br>
+                    to see top-15 adverse effects
+                </div>
+            </div>
+        </div>
+
+        <div class="shap-panel" id="shapPanel" style="display:none">
+            <div class="shap-header">
+                <span class="shap-title">SHAP Atom Contributions</span>
+                <span class="shap-effect-label" id="shapEffectLabel">—</span>
+            </div>
+            <div class="shap-body" id="shapBody">
+                <div class="shap-placeholder">Select an effect above to visualise<br>structural contributions</div>
+            </div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:#4444cc"></div>
+                    Positive contribution
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:#cc4444"></div>
+                    Negative contribution
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+let currentSmiles = "";
+
+function loadExample(smiles, el) {
+    document.getElementById("smiles").value = smiles;
+    predict();
+}
+
+async function predict() {
+    currentSmiles = document.getElementById("smiles").value.trim();
+    if (!currentSmiles) return;
+
+    const btn = document.getElementById("predictBtn");
+    btn.classList.add("loading");
+    btn.querySelector("span").textContent = "Computing...";
+
+    document.getElementById("shapPanel").style.display = "none";
+    document.getElementById("resultCount").textContent = "";
+    document.getElementById("resultsContainer").innerHTML = `
+        <div class="empty-state">
+            <div class="spinner"></div>
+            <div class="empty-text">Running inference...</div>
+        </div>`;
+
+    try {
+        const res = await fetch("/predict", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({smiles: currentSmiles})
+        });
+        const data = await res.json();
+
+        if (data.error) {
+            document.getElementById("resultsContainer").innerHTML =
+                `<div class="error-msg">⚠ ${data.error}</div>`;
+            return;
+        }
+
+        renderResults(data.results);
+
+    } catch(e) {
+        document.getElementById("resultsContainer").innerHTML =
+            `<div class="error-msg">⚠ Request failed: ${e.message}</div>`;
+    } finally {
+        btn.classList.remove("loading");
+        btn.querySelector("span").textContent = "Run Prediction";
+    }
+}
+
+function renderResults(results) {
+    document.getElementById("resultCount").textContent = `TOP ${results.length}`;
+
+    const container = document.getElementById("resultsContainer");
+    container.innerHTML = '<div class="results-list" id="resultsList"></div>';
+    const list = document.getElementById("resultsList");
+
+    results.forEach((item, i) => {
+        const row = document.createElement("div");
+        row.className = "result-row";
+        row.style.setProperty("--score-w", `${(item.score * 100).toFixed(1)}%`);
+        row.style.animationDelay = `${i * 30}ms`;
+        row.innerHTML = `
+            <span class="effect-name">${item.effect}</span>
+            <span class="effect-score">${item.score.toFixed(3)}</span>`;
+        row.onclick = () => showShap(item.effect, row);
+        list.appendChild(row);
+    });
+
+    // Auto-load SHAP for top result
+    if (results.length > 0) {
+        showShap(results[0].effect, list.firstChild);
+    }
+}
+
+async function showShap(effect, el) {
+    document.querySelectorAll(".result-row").forEach(r => r.classList.remove("active"));
+    if (el) el.classList.add("active");
+
+    const panel = document.getElementById("shapPanel");
+    const label = document.getElementById("shapEffectLabel");
+    const body  = document.getElementById("shapBody");
+
+    panel.style.display = "block";
+    label.textContent = effect;
+    body.innerHTML = `
+        <div class="shap-loading">
+            <div class="spinner"></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">
+                Computing atom contributions...
+            </div>
+        </div>`;
+
+    try {
+        const res = await fetch("/shap", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({smiles: currentSmiles, effect})
+        });
+        const data = await res.json();
+
+        if (data.error) {
+            body.innerHTML = `<div class="error-msg">⚠ ${data.error}</div>`;
+            return;
+        }
+
+        body.innerHTML = `<img src="data:image/png;base64,${data.image}" alt="SHAP map for ${effect}">`;
+
+    } catch(e) {
+        body.innerHTML = `<div class="error-msg">⚠ ${e.message}</div>`;
+    }
+}
+
+// Allow Enter key to trigger prediction
+document.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.ctrlKey) predict();
+});
+</script>
+</body>
+</html>
