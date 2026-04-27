@@ -12,7 +12,7 @@ A machine learning web application that predicts adverse drug side effects from 
 
 ## Demo
 
-![Screenshot Placeholder](screenshot.png)
+![Screenshot Placeholder]("Screenshot 2026-04-27 222738.png")
 
 ## Tech Stack
 
