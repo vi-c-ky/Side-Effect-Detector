@@ -3,7 +3,7 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem, Descriptors
 
-# Load once (important for performance)
+# Load once
 data = joblib.load("hybrid_model.pkl")
 
 models = data["models"]
@@ -24,7 +24,7 @@ def smiles_to_features(smiles):
 
     fp = np.concatenate([fp1, fp2, fp3, fp4])
 
-    # Descriptors (14 total — MUST match training)
+    # Descriptors
     desc = np.array([
         Descriptors.MolWt(mol),
         Descriptors.MolLogP(mol),

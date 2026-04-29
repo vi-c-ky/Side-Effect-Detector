@@ -103,7 +103,6 @@ def extract_shap_values(explainer, x):
     """
     sv = explainer.shap_values(x)
 
-    # New SHAP (>=0.40): returns Explanation object
     if hasattr(sv, "values"):
         vals = sv.values
         # shape may be (1, n_features) or (1, n_features, 2)
@@ -111,7 +110,7 @@ def extract_shap_values(explainer, x):
             return vals[0, :, 1]   # class 1
         return vals[0]
 
-    # Old SHAP: returns list [class0_array, class1_array]
+    
     if isinstance(sv, list):
         arr = sv[1] if len(sv) > 1 else sv[0]
         return arr[0] if arr.ndim == 2 else arr

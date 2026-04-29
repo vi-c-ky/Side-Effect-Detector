@@ -50,7 +50,7 @@ def smiles_to_features(smiles):
 
 
 # =====================
-# FETCH TARGETS (same logic as before)
+# FETCH TARGETS
 # =====================
 def get_targets(smiles):
     try:
@@ -121,7 +121,7 @@ for clf in models:
 probs = np.array(probs)
 
 # =====================
-# TOP-K ONLY (clean)
+# TOP-K ONLY
 # =====================
 topk_idx = np.argsort(probs)[-TOP_K:][::-1]
 
